@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TurismoApp — Puntos de Interés</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b0f0e;
+      --surface: #131918;
+      --card: #1a2120;
+      --border: #243330;
+      --accent: #00e5a0;
+      --accent2: #00b07a;
+      --warn: #ff6b35;
+      --text: #e8f0ee;
+      --muted: #7a9490;
+      --radius: 14px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* BG noise */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    header {
+      position: relative; z-index: 10;
+      padding: 28px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(0,229,160,0.06) 0%, transparent 60%);
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 1.5rem;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .badge {
+      background: rgba(0,229,160,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(0,229,160,0.25);
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em;
+    }
+
+    main {
+      position: relative; z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex; gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px; margin-bottom: 36px;
+      width: fit-content;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border: none; border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #001a12;
+      font-weight: 700;
+    }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.3s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* SECTION TITLES */
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem; font-weight: 700;
+      margin-bottom: 6px; color: var(--text);
+    }
+    .section-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+
+    /* CARDS */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      color: var(--accent); margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* GROUPS GRID */
+    .grupos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px; margin-bottom: 28px;
+    }
+
+    .grupo-chip {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .grupo-chip:hover { border-color: var(--accent2); }
+    .grupo-chip.selected {
+      border-color: var(--accent);
+      background: rgba(0,229,160,0.08);
+    }
+    .grupo-chip .chip-icon { font-size: 1.8rem; margin-bottom: 6px; }
+    .grupo-chip .chip-label { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+    .grupo-chip.selected .chip-label { color: var(--accent); }
+
+    /* FORMS */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-row.single { grid-template-columns: 1fr; }
+    .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+    label { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
+
+    input, select, textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.92rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    select option { background: var(--surface); }
+
+    /* BUTTONS */
+    .btn {
+      padding: 12px 24px;
+      border: none; border-radius: 10px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 0.88rem;
+      cursor: pointer; transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 8px;
+      letter-spacing: 0.03em;
+    }
+    .btn-primary {
+      background: var(--accent); color: #001a12;
+    }
+    .btn-primary:hover { background: #33edb3; transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-warn { background: var(--warn); color: #fff; }
+    .btn-warn:hover { background: #ff8557; }
+    .btn-sm { padding: 7px 14px; font-size: 0.78rem; }
+
+    /* LOCATION BAR */
+    .location-bar {
+      background: linear-gradient(135deg, rgba(0,229,160,0.08), rgba(0,176,122,0.04));
+      border: 1px solid rgba(0,229,160,0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .location-bar .loc-icon { font-size: 1.4rem; }
+    .location-bar .loc-info { flex: 1; min-width: 200px; }
+    .location-bar .loc-label { font-size: 0.72rem; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .location-bar .loc-coords { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 600; margin-top: 2px; }
+
+    /* RESULTS LIST */
+    .result-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 16px;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .result-item:hover { border-color: var(--accent2); background: var(--card); }
+    .result-item.selected-place { border-color: var(--accent); background: rgba(0,229,160,0.06); }
+
+    .result-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: rgba(0,229,160,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+    }
+    .result-name { font-weight: 600; font-size: 0.95rem; }
+    .result-desc { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+    .result-dist {
+      margin-left: auto; flex-shrink: 0;
+      background: rgba(0,229,160,0.15);
+      color: var(--accent);
+      border-radius: 8px; padding: 4px 10px;
+      font-size: 0.8rem; font-weight: 700;
+    }
+
+    /* DISTANCE RESULT */
+    .dist-result-box {
+      background: linear-gradient(135deg, rgba(0,229,160,0.1), rgba(0,176,122,0.05));
+      border: 1px solid rgba(0,229,160,0.3);
+      border-radius: 12px; padding: 24px;
+      text-align: center; margin-top: 20px;
+    }
+    .dist-km {
+      font-family: 'Syne', sans-serif;
+      font-size: 3rem; font-weight: 800;
+      color: var(--accent); line-height: 1;
+    }
+    .dist-unit { font-size: 1rem; color: var(--muted); margin-top: 4px; }
+    .dist-meters { font-size: 0.9rem; color: var(--muted); margin-top: 8px; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 30px; right: 30px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 20px;
+      font-size: 0.88rem; max-width: 320px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 9999; transform: translateY(20px); opacity: 0;
+      transition: all 0.3s ease; pointer-events: none;
+    }
+    .toast.show { transform: none; opacity: 1; }
+    .toast.success { border-color: var(--accent); }
+    .toast.error { border-color: var(--warn); }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center; padding: 48px 20px; color: var(--muted);
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty p { font-size: 0.9rem; }
+
+    /* SPINNER */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid rgba(0,229,160,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      .form-row, .form-row.triple { grid-template-columns: 1fr; }
+      .tabs { width: 100%; overflow-x: auto; }
+      .grupos-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🗺️</div>
+    TurismoApp
+  </div>
+  <div class="badge">Redis + FastAPI</div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('explorar', event)">🔍 Explorar</button>
+    <button class="tab-btn" onclick="switchTab('agregar', event)">➕ Agregar Lugar</button>
+    <button class="tab-btn" onclick="switchTab('distancia', event)">📏 Distancia</button>
+  </div>
+
+  <!-- TAB: EXPLORAR -->
+  <div id="tab-explorar" class="tab-pane active">
+    <div class="section-title">Explorar cerca tuyo</div>
+    <p class="section-sub">Encontrá lugares dentro de un radio de 5 km de tu posición.</p>
+
+    <div class="location-bar">
+      <div class="loc-icon">📍</div>
+      <div class="loc-info">
+        <div class="loc-label">Tu ubicación actual</div>
+        <div class="loc-coords" id="user-coords-display">Obteniendo posición...</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="getLocation()">🔄 Actualizar</button>
+      <button class="btn btn-outline btn-sm" onclick="openManualLocation()">✏️ Ingresar manual</button>
+    </div>
+
+    <!-- Manual location inputs (hidden by default) -->
+    <div id="manual-location-form" style="display:none;" class="card" style="margin-bottom:20px;">
+      <div class="card-title">📍 Ubicación manual</div>
+      <div class="form-row">
+        <div>
+          <label>Latitud</label>
+          <input type="number" id="manual-lat" step="0.0001" placeholder="-32.484" value="-32.484" />
+        </div>
+        <div>
+          <label>Longitud</label>
+          <input type="number" id="manual-lon" step="0.0001" placeholder="-58.233" value="-58.233" />
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="setManualLocation()">✅ Usar esta ubicación</button>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <label style="margin-bottom: 12px; display:block;">Seleccioná un grupo de interés</label>
+      <div class="grupos-grid" id="grupos-grid">
+        <div style="color:var(--muted); font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+          <div class="spinner"></div> Cargando grupos...
+        </div>
+      </div>
+    </div>
+
+    <div id="resultados-container">
+      <div class="empty">
+        <div class="empty-icon">🗺️</div>
+        <p>Seleccioná un grupo para ver los lugares cercanos.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: AGREGAR -->
+  <div id="tab-agregar" class="tab-pane">
+    <div class="section-title">Agregar un lugar</div>
+    <p class="section-sub">Sumá un nuevo punto de interés a la base de datos.</p>
+
+    <div class="card">
+      <div class="form-row single">
+        <div>
+          <label>Nombre del lugar</label>
+          <input type="text" id="add-nombre" placeholder="Ej: Cervecería Artesanal La Paloma" />
+        </div>
+      </div>
+      <div class="form-row single">
+        <div>
+          <label>Descripción (opcional)</label>
+          <input type="text" id="add-desc" placeholder="Ej: Especialidad en IPAs y stouts locales" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Latitud</label>
+          <input type="number" id="add-lat" step="0.0001" placeholder="-32.484" />
+        </div>
+        <div>
+          <label>Longitud</label>
+          <input type="number" id="add-lon" step="0.0001" placeholder="-58.233" />
+        </div>
+      </div>
+      <div class="form-row single">
+        <div>
+          <label>Grupo de interés</label>
+          <select id="add-grupo">
+            <option value="">Seleccioná un grupo...</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top: 8px;">
+        <button class="btn btn-primary" onclick="agregarLugar()">➕ Agregar lugar</button>
+        <button class="btn btn-outline" onclick="usarMiUbicacionEnForm()">📍 Usar mi ubicación</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: DISTANCIA -->
+  <div id="tab-distancia" class="tab-pane">
+    <div class="section-title">Calcular distancia</div>
+    <p class="section-sub">Elegí un lugar y calculá la distancia exacta desde tu posición.</p>
+
+    <div class="card">
+      <div class="card-title">🎯 Buscar lugar</div>
+      <div class="form-row">
+        <div>
+          <label>Grupo</label>
+          <select id="dist-grupo" onchange="cargarLugaresParaDistancia()">
+            <option value="">Seleccioná grupo...</option>
+          </select>
+        </div>
+        <div>
+          <label>Lugar</label>
+          <select id="dist-lugar">
+            <option value="">Primero elegí un grupo...</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="calcularDistancia()">📏 Calcular distancia</button>
+    </div>
+
+    <div id="dist-result" style="display:none;" class="dist-result-box">
+      <div style="font-size:0.85rem; color:var(--muted); margin-bottom: 12px;" id="dist-place-name">—</div>
+      <div class="dist-km" id="dist-km-val">—</div>
+      <div class="dist-unit">kilómetros</div>
+      <div class="dist-meters" id="dist-m-val">—</div>
+    </div>
+  </div>
+</main>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = "http://localhost:8000";
+  let userLat = null, userLon = null;
+  let grupos = {};
+  let grupoSeleccionado = null;
+
+  const GRUPO_ICONS = {
+    cervecerias: "🍺",
+    universidades: "🎓",
+    farmacias: "💊",
+    emergencias: "🚨",
+    supermercados: "🛒",
+  };
+
+  // ── UTILS ──
+  function showToast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove("show"), 3500);
+  }
+
+  function switchTab(tab, ev) {
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById(`tab-${tab}`).classList.add("active");
+    if (ev && ev.target) {
+      ev.target.classList.add("active");
+    }
+  }
+
+  // ── LOCATION ──
+  function getLocation() {
+    document.getElementById("user-coords-display").innerHTML = '<div class="spinner"></div> Obteniendo...';
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          userLat = pos.coords.latitude;
+          userLon = pos.coords.longitude;
+          updateCoordsDisplay();
+        },
+        () => {
+          // Default to Concepción del Uruguay
+          userLat = -32.484;
+          userLon = -58.233;
+          updateCoordsDisplay();
+          showToast("GPS no disponible. Usando ubicación por defecto (CdU).", "error");
+        }
+      );
+    } else {
+      userLat = -32.484; userLon = -58.233;
+      updateCoordsDisplay();
+    }
+  }
+
+  function updateCoordsDisplay() {
+    document.getElementById("user-coords-display").textContent = `${userLat.toFixed(5)}, ${userLon.toFixed(5)}`;
+  }
+
+  function openManualLocation() {
+    const f = document.getElementById("manual-location-form");
+    f.style.display = f.style.display === "none" ? "block" : "none";
+  }
+
+  function setManualLocation() {
+    userLat = parseFloat(document.getElementById("manual-lat").value);
+    userLon = parseFloat(document.getElementById("manual-lon").value);
+    if (isNaN(userLat) || isNaN(userLon)) { showToast("Coordenadas inválidas", "error"); return; }
+    updateCoordsDisplay();
+    document.getElementById("manual-location-form").style.display = "none";
+    showToast("Ubicación actualizada ✓");
+  }
+
+  function usarMiUbicacionEnForm() {
+    if (!userLat) { showToast("Primero obtené tu ubicación.", "error"); return; }
+    document.getElementById("add-lat").value = userLat;
+    document.getElementById("add-lon").value = userLon;
+  }
+
+  // ── GRUPOS ──
+  async function cargarGrupos() {
+    try {
+      const res = await fetch(`${API}/grupos`);
+      const data = await res.json();
+      grupos = {};
+      data.grupos.forEach(g => grupos[g.id] = g.nombre);
+      renderGruposGrid(data.grupos);
+      populateGrupoSelects(data.grupos);
+    } catch (e) {
+      document.getElementById("grupos-grid").innerHTML =
+        `<div style="color:var(--warn)">⚠️ No se pudo conectar con la API. Verificá que el backend esté corriendo.</div>`;
+    }
+  }
+
+  function renderGruposGrid(gruposList) {
+    const grid = document.getElementById("grupos-grid");
+    grid.innerHTML = gruposList.map(g => `
+      <div class="grupo-chip" id="chip-${g.id}" onclick="seleccionarGrupo('${g.id}')">
+        <div class="chip-icon">${GRUPO_ICONS[g.id] || "📌"}</div>
+        <div class="chip-label">${g.nombre}</div>
+      </div>
+    `).join("");
+  }
+
+  function populateGrupoSelects(gruposList) {
+    ["add-grupo", "dist-grupo"].forEach(id => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = `<option value="">Seleccioná un grupo...</option>` +
+        gruposList.map(g => `<option value="${g.id}">${GRUPO_ICONS[g.id] || "📌"} ${g.nombre}</option>`).join("");
+    });
+  }
+
+  // ── EXPLORAR ──
+  function seleccionarGrupo(grupoId) {
+    grupoSeleccionado = grupoId;
+    document.querySelectorAll(".grupo-chip").forEach(c => c.classList.remove("selected"));
+    document.getElementById(`chip-${grupoId}`).classList.add("selected");
+    buscarCercanos();
+  }
+
+  async function buscarCercanos() {
+    if (!grupoSeleccionado) { showToast("Seleccioná un grupo primero", "error"); return; }
+    if (userLat === null || userLon === null) { showToast("Ubicación no disponible aún", "error"); return; }
+
+    const container = document.getElementById("resultados-container");
+    container.innerHTML = `<div style="padding:20px; color:var(--muted); display:flex; align-items:center; gap:10px;"><div class="spinner"></div> Buscando lugares cercanos...</div>`;
+
+    try {
+      const res = await fetch(`${API}/cercanos/${grupoSeleccionado}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latitud: userLat, longitud: userLon })
+      });
+      const data = await res.json();
+
+      if (data.lugares.length === 0) {
+        container.innerHTML = `<div class="empty"><div class="empty-icon">${GRUPO_ICONS[grupoSeleccionado]}</div><p>No hay lugares de <strong>${data.grupo}</strong> dentro de 5 km.</p></div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <span style="font-family:'Syne',sans-serif; font-weight:700;">${GRUPO_ICONS[grupoSeleccionado]} ${data.grupo}</span>
+          <span class="badge">${data.total} encontrado${data.total !== 1 ? 's' : ''}</span>
+        </div>
+        ${data.lugares.map(l => `
+          <div class="result-item" onclick="irADistancia('${grupoSeleccionado}', '${l.nombre.replace(/'/g, "\\'")}')">
+            <div class="result-icon">${GRUPO_ICONS[grupoSeleccionado] || "📌"}</div>
+            <div>
+              <div class="result-name">${l.nombre}</div>
+              <div class="result-desc">${l.descripcion || ''}</div>
+            </div>
+            <div class="result-dist">${l.distancia_km} km</div>
+          </div>
+        `).join("")}
+        <p style="font-size:0.75rem; color:var(--muted); margin-top:12px; text-align:center;">Hacé clic en un lugar para calcular la distancia exacta →</p>
+      `;
+    } catch (e) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><p>Error al conectar con la API.</p></div>`;
+    }
+  }
+
+  function irADistancia(grupoId, nombreLugar) {
+    // Switch to distancia tab and preselect
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("tab-distancia").classList.add("active");
+    document.querySelectorAll(".tab-btn")[2].classList.add("active");
+
+    document.getElementById("dist-grupo").value = grupoId;
+    cargarLugaresParaDistancia().then(() => {
+      const sel = document.getElementById("dist-lugar");
+      for (let opt of sel.options) {
+        if (opt.value.toLowerCase().includes(nombreLugar.toLowerCase().split(" ")[0])) {
+          opt.selected = true; break;
+        }
+      }
+    });
+  }
+
+  // ── AGREGAR ──
+  async function agregarLugar() {
+    const nombre = document.getElementById("add-nombre").value.trim();
+    const desc = document.getElementById("add-desc").value.trim();
+    const lat = parseFloat(document.getElementById("add-lat").value);
+    const lon = parseFloat(document.getElementById("add-lon").value);
+    const grupo = document.getElementById("add-grupo").value;
+
+    if (!nombre || isNaN(lat) || isNaN(lon) || !grupo) {
+      showToast("Completá todos los campos requeridos.", "error"); return;
+    }
+
+    try {
+      const res = await fetch(`${API}/lugares`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, descripcion: desc, latitud: lat, longitud: lon, grupo })
+      });
+      if (res.ok) {
+        showToast(`✅ "${nombre}" agregado exitosamente.`);
+        document.getElementById("add-nombre").value = "";
+        document.getElementById("add-desc").value = "";
+        document.getElementById("add-lat").value = "";
+        document.getElementById("add-lon").value = "";
+        document.getElementById("add-grupo").value = "";
+      } else {
+        const err = await res.json();
+        showToast(err.detail || "Error al agregar.", "error");
+      }
+    } catch (e) {
+      showToast("Error de conexión con la API.", "error");
+    }
+  }
+
+  // ── DISTANCIA ──
+  async function cargarLugaresParaDistancia() {
+    const grupo = document.getElementById("dist-grupo").value;
+    const sel = document.getElementById("dist-lugar");
+    if (!grupo) { sel.innerHTML = "<option>Primero elegí un grupo...</option>"; return; }
+
+    sel.innerHTML = "<option>Cargando...</option>";
+    try {
+      const res = await fetch(`${API}/lugares/${grupo}`);
+      const data = await res.json();
+      sel.innerHTML = `<option value="">Seleccioná un lugar...</option>` +
+        data.lugares.map(l => `<option value="${l.nombre}">${l.nombre}</option>`).join("");
+    } catch (e) {
+      sel.innerHTML = "<option>Error al cargar</option>";
+    }
+  }
+
+  async function calcularDistancia() {
+    if (userLat === null || userLon === null) { showToast("Ubicación no disponible.", "error"); return; }
+    const grupo = document.getElementById("dist-grupo").value;
+    const nombre = document.getElementById("dist-lugar").value;
+    if (!grupo || !nombre) { showToast("Seleccioná grupo y lugar.", "error"); return; }
+
+    try {
+      const params = new URLSearchParams({ grupo, nombre_lugar: nombre });
+      const res = await fetch(`${API}/distancia?${params}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latitud: userLat, longitud: userLon })
+      });
+      const data = await res.json();
+
+      document.getElementById("dist-result").style.display = "block";
+      document.getElementById("dist-place-name").textContent = `${GRUPO_ICONS[grupo] || "📌"} ${data.lugar} — ${data.grupo}`;
+      document.getElementById("dist-km-val").textContent = data.distancia_km;
+      document.getElementById("dist-m-val").textContent = `equivale a ${data.distancia_metros} metros`;
+    } catch (e) {
+      showToast("Error al calcular distancia.", "error");
+    }
+  }
+
+  // ── INIT ──
+  getLocation();
+  cargarGrupos();
+</script>
+
+</body>
+</html>
