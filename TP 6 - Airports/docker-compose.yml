@@ -1,0 +1,48 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: airports-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+
+  redis-geo:
+    image: redis:7-alpine
+    container_name: airports-redis-geo
+    restart: unless-stopped
+    volumes:
+      - redis_geo_data:/data
+
+  redis-pop:
+    image: redis:7-alpine
+    container_name: airports-redis-pop
+    restart: unless-stopped
+    volumes:
+      - redis_pop_data:/data
+
+  backend:
+    build: ./backend
+    container_name: airports-backend
+    restart: unless-stopped
+    ports: ["4000:4000"]
+    environment:
+      - PORT=4000
+      - MONGO_URL=mongodb://mongo:27017/airport_db
+      - REDIS_GEO_URL=redis://redis-geo:6379
+      - REDIS_POP_URL=redis://redis-pop:6379
+      - CORS_ORIGIN=*
+    depends_on: [mongo, redis-geo, redis-pop]
+
+  frontend:
+    image: nginx:alpine
+    container_name: airports-frontend
+    restart: unless-stopped
+    ports: ["8080:80"]
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on: [backend]
+
+volumes:
+  mongo_data:
+  redis_geo_data:
+  redis_pop_data:

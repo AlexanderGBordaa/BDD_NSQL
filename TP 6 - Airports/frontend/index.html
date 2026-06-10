@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Aeropuertos — Mapa</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+  :root { color-scheme: light; --bg:#f7f7f8; --fg:#111; --muted:#666; --border:#e5e5e7; --accent:#0a84ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--fg); }
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; border-bottom:1px solid var(--border); background:#fff; }
+  header h1 { margin:0; font-size:18px; font-weight:600; }
+  header nav button { margin-left:8px; padding:6px 12px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; font-size:13px; }
+  header nav button:hover { background:#f0f0f3; }
+  #map { height: calc(100vh - 53px); width:100%; }
+  .panel { position:absolute; top:70px; right:20px; width:320px; max-height:calc(100vh - 90px); overflow:auto; background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; box-shadow:0 4px 20px rgba(0,0,0,.08); z-index:1000; display:none; }
+  .panel.open { display:block; }
+  .panel h2 { margin:0 0 10px; font-size:15px; }
+  .panel ol { padding-left:20px; margin:0; }
+  .panel li { font-size:13px; margin:4px 0; }
+  .panel .close { position:absolute; top:8px; right:10px; cursor:pointer; color:var(--muted); border:none; background:none; font-size:18px; }
+  .popup b { font-size:14px; } .popup small { color:var(--muted); }
+  .popup .row { margin:3px 0; font-size:12px; }
+  form.add { display:grid; gap:6px; }
+  form.add input { padding:6px; border:1px solid var(--border); border-radius:6px; font-size:13px; }
+  form.add button { padding:6px; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>✈ Aeropuertos</h1>
+  <nav>
+    <button onclick="togglePanel('popular')">Populares</button>
+    <button onclick="togglePanel('nearby')">Cercanos</button>
+    <button onclick="togglePanel('add')">+ Nuevo</button>
+  </nav>
+</header>
+<div id="map"></div>
+
+<div id="panel-popular" class="panel">
+  <button class="close" onclick="togglePanel('popular')">×</button>
+  <h2>Top 10 más visitados</h2>
+  <ol id="popular-list"><li>Cargando…</li></ol>
+</div>
+
+<div id="panel-nearby" class="panel">
+  <button class="close" onclick="togglePanel('nearby')">×</button>
+  <h2>Aeropuertos cercanos</h2>
+  <p style="font-size:12px;color:var(--muted);margin:4px 0">Click derecho en el mapa para buscar desde ese punto. Radio en km.</p>
+  <input id="nearby-radius" type="number" value="200" min="1" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px" />
+  <ol id="nearby-list"><li>Click derecho en el mapa…</li></ol>
+</div>
+
+<div id="panel-add" class="panel">
+  <button class="close" onclick="togglePanel('add')">×</button>
+  <h2>Nuevo aeropuerto</h2>
+  <form class="add" onsubmit="createAirport(event)">
+    <input name="iata_faa" placeholder="IATA (3 letras)" required maxlength="3" />
+    <input name="name" placeholder="Nombre" required />
+    <input name="city" placeholder="Ciudad, País" />
+    <input name="icao" placeholder="ICAO" />
+    <input name="lat" type="number" step="any" placeholder="Latitud" required />
+    <input name="lng" type="number" step="any" placeholder="Longitud" required />
+    <input name="alt" type="number" placeholder="Altitud (ft)" />
+    <input name="tz" placeholder="Timezone" />
+    <button type="submit">Crear</button>
+  </form>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+const API = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:4000" : "";
+const map = L.map('map').setView([20, 0], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const cluster = L.markerClusterGroup({ chunkedLoading: true });
+map.addLayer(cluster);
+
+async function loadAll() {
+  const res = await fetch(API + '/airports');
+  const data = await res.json();
+  for (const a of data) {
+    const m = L.marker([a.lat, a.lng]);
+    m.on('click', () => openAirport(a.iata_faa, m));
+    cluster.addLayer(m);
+  }
+}
+
+async function openAirport(iata, marker) {
+  const res = await fetch(API + '/airports/' + iata);
+  if (!res.ok) return;
+  const a = await res.json();
+  const html = `<div class="popup">
+    <b>${a.name}</b> <small>(${a.iata_faa}${a.icao? ' / '+a.icao:''})</small>
+    <div class="row">📍 ${a.city || ''}</div>
+    <div class="row">🌐 ${a.lat.toFixed(4)}, ${a.lng.toFixed(4)}</div>
+    <div class="row">⛰ ${a.alt} ft &nbsp; 🕒 ${a.tz || ''}</div>
+    <div class="row" style="margin-top:6px"><button onclick="deleteAirport('${a.iata_faa}')" style="font-size:11px;padding:3px 8px;border:1px solid #e5e5e7;border-radius:6px;background:#fff;cursor:pointer">Eliminar</button></div>
+  </div>`;
+  marker.bindPopup(html).openPopup();
+}
+
+async function deleteAirport(iata) {
+  if (!confirm('Eliminar ' + iata + '?')) return;
+  const r = await fetch(API + '/airports/' + iata, { method: 'DELETE' });
+  if (r.ok) { alert('Eliminado'); location.reload(); }
+}
+
+async function createAirport(ev) {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  const body = Object.fromEntries(fd.entries());
+  body.lat = parseFloat(body.lat); body.lng = parseFloat(body.lng);
+  body.alt = parseInt(body.alt || 0);
+  const r = await fetch(API + '/airports', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (r.ok) { alert('Creado'); location.reload(); } else { alert((await r.json()).error); }
+}
+
+function togglePanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
+  const p = document.getElementById('panel-' + name);
+  p.classList.toggle('open');
+  if (name === 'popular') loadPopular();
+}
+
+async function loadPopular() {
+  const r = await fetch(API + '/airports/popular');
+  const list = await r.json();
+  const ol = document.getElementById('popular-list');
+  ol.innerHTML = list.length ? list.map(a => `<li><b>${a.iata_faa}</b> — ${a.name || ''} <small>(${a.visits} visitas)</small></li>`).join('') : '<li>Sin datos aún. Haz clic en marcadores.</li>';
+}
+
+map.on('contextmenu', async (e) => {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
+  document.getElementById('panel-nearby').classList.add('open');
+  const radius = document.getElementById('nearby-radius').value || 200;
+  const r = await fetch(`${API}/airports/nearby?lat=${e.latlng.lat}&lng=${e.latlng.lng}&radius=${radius}`);
+  const list = await r.json();
+  document.getElementById('nearby-list').innerHTML = list.length
+    ? list.slice(0,20).map(a => `<li><b>${a.iata_faa}</b> ${a.name||''} — ${a.distance_km.toFixed(1)} km</li>`).join('')
+    : '<li>Ninguno en ese radio.</li>';
+});
+
+loadAll();
+</script>
+</body>
+</html>
